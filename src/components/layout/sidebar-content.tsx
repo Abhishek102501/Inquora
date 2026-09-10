@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useId } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Plus, FileText, LogOut, User, ChevronsLeft, ChevronsRight, Sparkles } from "lucide-react";
+import { Plus, FileText, LogOut, User, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { cn } from "cn";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -42,16 +43,7 @@ export function SidebarContent({ collapsed, onToggleCollapse, onNavigate }: Side
           collapsed && "justify-center px-0",
         )}
       >
-        <Link href="/" className="group flex items-center gap-2.5" onClick={onNavigate}>
-          <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-intel to-signal font-serif text-sm font-semibold text-white shadow-sm transition-transform duration-300 group-hover:scale-105">
-            <Sparkles className="size-3.5" />
-          </span>
-          {!collapsed && (
-            <span className="font-serif text-[17px] font-semibold tracking-tight text-sidebar-foreground">
-              Inqora
-            </span>
-          )}
-        </Link>
+        <BrandLogo showWordmark={!collapsed} onClick={onNavigate} />
       </div>
 
       <div className={cn("px-3 pt-4", collapsed && "px-2")}>
@@ -79,7 +71,7 @@ export function SidebarContent({ collapsed, onToggleCollapse, onNavigate }: Side
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                "relative flex min-h-11 items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 active && "text-sidebar-accent-foreground",
                 collapsed && "justify-center px-0",
               )}

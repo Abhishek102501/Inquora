@@ -121,7 +121,7 @@ export function UploadManager() {
         tabIndex={0}
         onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
         className={cn(
-          "relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed px-6 py-16 text-center transition-all duration-300",
+          "relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed px-4 py-10 text-center transition-all duration-300 sm:px-6 sm:py-16",
           dragActive
             ? "scale-[1.01] border-signal bg-signal/5 shadow-lg"
             : "border-border hover:border-signal/40 hover:bg-muted/40",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type KeyboardEvent } from "react";
-import { ArrowUp, Paperclip } from "lucide-react";
+import { ArrowUp, Check, Paperclip } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -78,9 +78,7 @@ export function Composer({
                 className="justify-between"
               >
                 <span className="truncate">{doc.name}</span>
-                {selectedDocumentIds.includes(doc.id) && (
-                  <span className="text-signal">&#10003;</span>
-                )}
+                {selectedDocumentIds.includes(doc.id) && <Check className="size-3.5 text-signal" />}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

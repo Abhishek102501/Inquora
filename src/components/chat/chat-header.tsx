@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, MoreHorizontal, Pencil, Trash2, Download } from "lucide-react";
+import { FileText, MoreHorizontal, Pencil, Trash2, Download, Quote } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -16,12 +16,16 @@ import type { AppDocument } from "@/types";
 export function ChatHeader({
   title,
   documents,
+  sourceCount = 0,
+  onOpenSources,
 }: {
   title: string;
   documents: AppDocument[];
+  sourceCount?: number;
+  onOpenSources?: () => void;
 }) {
   return (
-    <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4 md:px-6">
+    <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4 md:gap-3 md:px-6">
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{title}</p>
         {documents.length > 0 && (
@@ -31,6 +35,18 @@ export function ChatHeader({
           </div>
         )}
       </div>
+
+      {sourceCount > 0 && onOpenSources && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 lg:hidden"
+          onClick={onOpenSources}
+          aria-label={`Show ${sourceCount} source${sourceCount === 1 ? "" : "s"}`}
+        >
+          <Quote className="size-3.5" /> {sourceCount}
+        </Button>
+      )}
 
       <AIStatusIndicator className="hidden sm:inline-flex" />
 

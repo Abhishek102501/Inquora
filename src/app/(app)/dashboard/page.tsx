@@ -38,7 +38,7 @@ export default async function DashboardPage() {
         }
       />
 
-      <StaggerGroup className="grid grid-cols-2 gap-4 lg:grid-cols-4" viewport={false} stagger={0.06}>
+      <StaggerGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" viewport={false} stagger={0.06}>
         <StaggerItem>
           <StatCard label="Total documents" value={documents.length} icon={FileStack} />
         </StaggerItem>

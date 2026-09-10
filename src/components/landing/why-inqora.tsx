@@ -27,7 +27,7 @@ export function WhyInqora() {
     <section id="capabilities" className="mx-auto w-full max-w-6xl px-4 py-20 md:px-8 md:py-28">
       <FadeIn className="max-w-2xl">
         <p className="font-mono text-xs uppercase tracking-[0.14em] text-signal">Why Inqora</p>
-        <h2 className="mt-3 font-serif text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl">
+        <h2 className="mt-3 font-serif text-[clamp(1.75rem,1vw+1.4rem,2.25rem)] font-semibold leading-[1.1] tracking-tight">
           Built for people who need to trust the answer.
         </h2>
         <p className="mt-3 text-muted-foreground">
@@ -47,7 +47,7 @@ export function WhyInqora() {
           >
             <span className="font-mono text-sm text-muted-foreground/60">{pillar.index}</span>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-8">
-              <h3 className="font-serif text-3xl font-semibold tracking-tight transition-colors duration-300 group-hover:text-signal sm:w-56 sm:shrink-0 md:text-4xl">
+              <h3 className="font-serif text-[clamp(1.75rem,1vw+1.4rem,2.25rem)] font-semibold tracking-tight transition-colors duration-300 group-hover:text-signal sm:w-56 sm:shrink-0">
                 {pillar.title}
               </h3>
               <p className="max-w-xl text-base leading-relaxed text-muted-foreground">

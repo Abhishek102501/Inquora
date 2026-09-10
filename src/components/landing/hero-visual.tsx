@@ -19,17 +19,17 @@ export function HeroVisual() {
       <div className="glow-border relative overflow-hidden rounded-2xl border border-border bg-card/90 p-6 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] backdrop-blur-sm sm:p-7">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-fine-grid opacity-[0.15]" />
 
-        <div className="flex items-center justify-between border-b border-border pb-4">
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-8 items-center justify-center rounded-md bg-signal/10 text-signal">
+        <div className="flex items-center justify-between gap-2 border-b border-border pb-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-signal/10 text-signal">
               <FileText className="size-4" />
             </span>
-            <div>
-              <p className="text-sm font-medium leading-tight">Attention Is All You Need.pdf</p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium leading-tight">Attention Is All You Need.pdf</p>
               <p className="font-mono text-[11px] text-muted-foreground">62 pages</p>
             </div>
           </div>
-          <AIStatusIndicator />
+          <AIStatusIndicator className="shrink-0" />
         </div>
 
         <motion.div

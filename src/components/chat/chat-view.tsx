@@ -8,6 +8,7 @@ import { RetrievalIndicator } from "@/components/visual/retrieval-indicator";
 import { Composer } from "@/components/chat/composer";
 import { EmptyChat } from "@/components/chat/empty-chat";
 import { SourcesPanel } from "@/components/chat/sources-panel";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { sendMessage } from "@/lib/services/chat-service";
 import { messageIn } from "@/lib/motion";
 import type { AppDocument, ChatMessage } from "@/types";
@@ -30,6 +31,7 @@ export function ChatView({
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>(initialDocumentIds);
   const [isThinking, setIsThinking] = useState(false);
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -110,7 +112,12 @@ export function ChatView({
   return (
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
-        <ChatHeader title={title} documents={headerDocuments} />
+        <ChatHeader
+          title={title}
+          documents={headerDocuments}
+          sourceCount={latestSources.length}
+          onOpenSources={() => setSourcesOpen(true)}
+        />
 
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
           {messages.length === 0 ? (
@@ -159,6 +166,13 @@ export function ChatView({
           <SourcesPanel sources={latestSources} activeSourceId={activeSourceId} onSelect={setActiveSourceId} />
         </div>
       )}
+
+      <Sheet open={sourcesOpen} onOpenChange={setSourcesOpen}>
+        <SheetContent side="bottom" className="max-h-[75vh] p-0 lg:hidden">
+          <SheetTitle className="sr-only">Sources</SheetTitle>
+          <SourcesPanel sources={latestSources} activeSourceId={activeSourceId} onSelect={setActiveSourceId} />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

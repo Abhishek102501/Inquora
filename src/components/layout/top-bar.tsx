@@ -14,22 +14,22 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const [query, setQuery] = useState("");
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-6">
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur-md sm:gap-3 sm:px-4 md:px-6">
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden"
+        className="size-11 shrink-0 md:hidden"
         aria-label="Open navigation"
         onClick={onOpenMobileNav}
       >
         <Menu className="size-5" />
       </Button>
 
-      <h1 className="truncate font-serif text-[18px] font-semibold tracking-tight">
+      <h1 className="min-w-0 flex-1 truncate font-serif text-base font-semibold tracking-tight sm:text-[18px] md:flex-initial">
         {routeTitle(pathname)}
       </h1>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-1 sm:gap-2">
         <form
           className="group relative hidden sm:block"
           onSubmit={(e) => {
@@ -46,6 +46,15 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
             aria-label="Search documents"
           />
         </form>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-11 shrink-0 sm:hidden"
+          aria-label="Search documents"
+          onClick={() => router.push("/documents")}
+        >
+          <Search className="size-5" />
+        </Button>
         <ThemeToggle />
       </div>
     </header>

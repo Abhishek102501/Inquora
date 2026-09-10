@@ -33,10 +33,13 @@ export default function LandingPage() {
                 </FadeUpText>
 
                 <h1 className="mt-5 font-serif leading-[0.95] tracking-tight">
-                  <RevealText as="span" className="block text-6xl font-bold sm:text-7xl lg:text-[5rem]">
+                  <RevealText
+                    as="span"
+                    className="block text-[clamp(2.5rem,5vw+2rem,5rem)] font-bold"
+                  >
                     INQORA
                   </RevealText>
-                  <span className="mt-4 flex flex-col gap-0.5 text-3xl font-medium sm:text-4xl lg:text-[2.75rem]">
+                  <span className="mt-4 flex flex-col gap-0.5 text-[clamp(1.75rem,2.5vw+1.25rem,2.75rem)] font-medium">
                     <RevealText as="span" className="block" delay={0.22}>
                       ASK.
                     </RevealText>
@@ -92,7 +95,7 @@ export default function LandingPage() {
         <section id="product" className="mx-auto w-full max-w-6xl px-4 py-20 md:px-8 md:py-28">
           <FadeIn className="max-w-2xl">
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-signal">The product</p>
-            <h2 className="mt-3 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h2 className="mt-3 font-serif text-[clamp(1.75rem,1vw+1.4rem,2.25rem)] font-semibold tracking-tight">
               This is the actual workspace.
             </h2>
             <p className="mt-3 text-muted-foreground">
@@ -118,7 +121,7 @@ export default function LandingPage() {
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
                 Under the hood
               </p>
-              <h2 className="mt-3 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+              <h2 className="mt-3 font-serif text-[clamp(1.75rem,1vw+1.4rem,2.25rem)] font-semibold tracking-tight">
                 A semantic knowledge network
               </h2>
               <p className="mt-3 text-muted-foreground">
@@ -140,7 +143,7 @@ export default function LandingPage() {
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-signal">
                 Ready when you are
               </p>
-              <h2 className="max-w-2xl font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+              <h2 className="max-w-2xl font-serif text-[clamp(1.75rem,1vw+1.4rem,2.25rem)] font-semibold leading-tight tracking-tight">
                 Your documents, one intelligent workspace.
               </h2>
               <p className="max-w-md text-sm text-muted-foreground">

@@ -38,7 +38,7 @@ export function AnswerDemo() {
     <section id="verify" className="mx-auto w-full max-w-5xl px-4 py-20 md:px-8 md:py-28">
       <FadeIn className="max-w-2xl">
         <p className="font-mono text-xs uppercase tracking-[0.14em] text-signal">For researchers</p>
-        <h2 className="mt-3 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+        <h2 className="mt-3 font-serif text-[clamp(1.75rem,1vw+1.4rem,2.25rem)] font-semibold tracking-tight">
           See the answer behind the answer
         </h2>
         <p className="mt-3 text-muted-foreground">

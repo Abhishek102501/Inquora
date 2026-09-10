@@ -80,7 +80,7 @@ export function PipelineSection() {
     <section id="how-it-works" className="border-y border-border bg-muted/20 py-20 md:py-28">
       <div className="mx-auto w-full max-w-6xl px-4 md:px-8">
         <p className="font-mono text-xs uppercase tracking-[0.14em] text-signal">How it works</p>
-        <h2 className="mt-3 max-w-lg font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+        <h2 className="mt-3 max-w-lg font-serif text-[clamp(1.75rem,1vw+1.4rem,2.25rem)] font-semibold tracking-tight">
           From document to answer
         </h2>
         <div className="mt-14 flex flex-col gap-8 lg:flex-row lg:gap-0">

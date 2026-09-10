@@ -143,9 +143,11 @@
   body {
     @apply bg-background text-foreground;
     transition: background-color 0.35s ease, color 0.35s ease;
+    overflow-x: clip;
   }
   html {
     @apply font-sans;
+    overflow-x: clip;
   }
   ::selection {
     background: var(--highlight);
