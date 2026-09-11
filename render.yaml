@@ -1,0 +1,89 @@
+# Render Blueprint for the Inqora FastAPI backend.
+# https://render.com/docs/blueprint-spec
+#
+# This file only deploys backend/ — the Next.js frontend (frontend/) is
+# deployed separately on Vercel with Root Directory = frontend.
+#
+# Secrets (marked `sync: false`) are NOT stored here — set their real
+# values once in the Render dashboard after the first deploy. Everything
+# else has the same default as backend/.env.example.
+
+services:
+  - type: web
+    name: inqora-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+
+      # ---- MongoDB Atlas (secret) ----
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DATABASE
+        value: inquora
+      - key: MONGODB_VECTOR_INDEX
+        value: vector_index
+      - key: MONGODB_CHUNKS_COLLECTION
+        value: knowledge
+
+      # ---- Auth ----
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+
+      # ---- Gemini (secret) ----
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: GEMINI_EMBEDDING_MODEL
+        value: gemini-embedding-001
+      - key: GEMINI_EMBEDDING_DIMENSIONS
+        value: "1536"
+
+      # ---- Storage ----
+      # NOTE: "local" writes to the container's ephemeral disk, which does
+      # NOT persist across deploys/restarts and does NOT work with more
+      # than one instance. Fine for an initial deploy; switch to an S3
+      # StorageProvider before relying on uploaded files long-term.
+      - key: STORAGE_PROVIDER
+        value: local
+      - key: LOCAL_STORAGE_DIR
+        value: uploads
+      - key: MAX_UPLOAD_SIZE_MB
+        value: "25"
+
+      # ---- CORS ----
+      # Set this to your real deployed frontend origin(s), comma-separated,
+      # e.g. https://inqora.vercel.app — no wildcard in production.
+      - key: CORS_ORIGINS
+        sync: false
+
+      # ---- RAG tuning ----
+      - key: CHUNK_SIZE
+        value: "1000"
+      - key: CHUNK_OVERLAP
+        value: "150"
+      - key: RETRIEVAL_TOP_K
+        value: "8"
+      - key: RETRIEVAL_MAX_CONTEXT_CHUNKS
+        value: "6"
+      - key: RETRIEVAL_SIMILARITY_THRESHOLD
+        value: "0.6"
+      - key: CONVERSATION_HISTORY_MESSAGES
+        value: "8"
