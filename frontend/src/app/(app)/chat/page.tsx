@@ -1,12 +1,22 @@
-import { listDocuments } from "@/lib/services/document-service";
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { useDocuments } from "@/hooks/use-documents";
 import { ChatView } from "@/components/chat/chat-view";
 
-export default async function NewChatPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ document?: string }>;
-}) {
-  const [documents, { document }] = await Promise.all([listDocuments(), searchParams]);
+export default function NewChatPage() {
+  const searchParams = useSearchParams();
+  const document = searchParams.get("document");
+  const { documents, state } = useDocuments();
+
+  if (state === "loading") {
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground">
+        <Loader2 className="size-5 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <ChatView

@@ -51,6 +51,7 @@ Thumbs.db
 *.pem
 .vscode/
 .idea/
+.claude/
 
 # ---- Logs ----
 npm-debug.log*

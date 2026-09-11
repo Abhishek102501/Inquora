@@ -19,7 +19,10 @@ def _fake_hit(score: float, page: int, text: str, document_id: str, user_id: str
     }
 
 
-def test_vector_search_pipeline_filters_by_user_and_documents(db, monkeypatch):
+def test_vector_search_pipeline_structure(db, monkeypatch):
+    """The $vectorSearch stage itself carries no filter (this deployment's
+    index declares no filter fields) — user/document scoping happens via a
+    $match stage immediately after, which this test asserts."""
     captured_pipeline = {}
 
     def fake_aggregate(pipeline, *args, **kwargs):
@@ -36,11 +39,18 @@ def test_vector_search_pipeline_filters_by_user_and_documents(db, monkeypatch):
         top_k=5,
     )
 
-    stage = captured_pipeline["pipeline"][0]["$vectorSearch"]
-    assert stage["queryVector"] == [0.1, 0.2, 0.3]
-    assert stage["limit"] == 5
-    assert stage["filter"]["userId"] == {"$eq": "user-1"}
-    assert stage["filter"]["documentId"] == {"$in": ["doc-1", "doc-2"]}
+    pipeline = captured_pipeline["pipeline"]
+    vector_stage = pipeline[0]["$vectorSearch"]
+    assert vector_stage["queryVector"] == [0.1, 0.2, 0.3]
+    assert "filter" not in vector_stage
+    assert vector_stage["limit"] > 5  # over-fetched candidates before post-filtering
+
+    match_stages = [s["$match"] for s in pipeline if "$match" in s]
+    assert len(match_stages) == 1
+    assert match_stages[0]["userId"] == "user-1"
+    assert match_stages[0]["documentId"] == {"$in": ["doc-1", "doc-2"]}
+
+    assert pipeline[-1] == {"$limit": 5}
 
 
 def test_vector_search_omits_document_filter_when_not_scoped(db, monkeypatch):
@@ -55,8 +65,9 @@ def test_vector_search_omits_document_filter_when_not_scoped(db, monkeypatch):
     repo = ChunksRepository(db)
     repo.vector_search(query_embedding=[0.1], user_id="user-1", document_ids=None, top_k=5)
 
-    stage = captured_pipeline["pipeline"][0]["$vectorSearch"]
-    assert "documentId" not in stage["filter"]
+    match_stage = next(s["$match"] for s in captured_pipeline["pipeline"] if "$match" in s)
+    assert match_stage["userId"] == "user-1"
+    assert "documentId" not in match_stage
 
 
 def test_retrieval_service_filters_below_threshold(monkeypatch):

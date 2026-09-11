@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { MessageBubble } from "@/components/chat/message-bubble";
@@ -9,8 +10,7 @@ import { Composer } from "@/components/chat/composer";
 import { EmptyChat } from "@/components/chat/empty-chat";
 import { SourcesPanel } from "@/components/chat/sources-panel";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { sendMessage } from "@/lib/services/chat-service";
-import { messageIn } from "@/lib/motion";
+import { useChat } from "@/hooks/use-chat";
 import type { AppDocument, ChatMessage } from "@/types";
 
 export function ChatView({
@@ -26,10 +26,13 @@ export function ChatView({
   initialMessages: ChatMessage[];
   initialDocumentIds: string[];
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const router = useRouter();
+  const { conversationId: activeConversationId, messages, isThinking, send } = useChat(
+    conversationId,
+    initialMessages,
+  );
   const [input, setInput] = useState("");
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>(initialDocumentIds);
-  const [isThinking, setIsThinking] = useState(false);
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -38,61 +41,18 @@ export function ChatView({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isThinking]);
 
-  async function handleSend(text?: string) {
-    const content = (text ?? input).trim();
-    if (!content) return;
-
-    const userMessage: ChatMessage = {
-      id: `msg_${Date.now()}`,
-      role: "user",
-      content,
-      createdAt: new Date().toISOString(),
-      status: "complete",
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsThinking(true);
-
-    const lower = content.toLowerCase();
-
-    try {
-      if (lower.includes("error")) {
-        await new Promise((r) => setTimeout(r, 1700));
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `msg_${Date.now() + 1}`,
-            role: "assistant",
-            content:
-              "Something went wrong generating a response. Check your connection and try asking again.",
-            createdAt: new Date().toISOString(),
-            status: "error",
-          },
-        ]);
-        return;
-      }
-
-      if (lower.includes("no info") || lower.includes("not in the document")) {
-        await new Promise((r) => setTimeout(r, 1700));
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `msg_${Date.now() + 1}`,
-            role: "assistant",
-            content:
-              "I couldn't find anything in the selected documents that answers this. Try rephrasing, or select a different document to search.",
-            createdAt: new Date().toISOString(),
-            status: "no-answer",
-          },
-        ]);
-        return;
-      }
-
-      const response = await sendMessage(conversationId ?? "new", content);
-      setMessages((prev) => [...prev, response]);
-    } finally {
-      setIsThinking(false);
+  // Starting a brand-new chat creates a conversation on the first message —
+  // move the URL to /chat/{id} so refresh/back/bookmark all keep working.
+  useEffect(() => {
+    if (activeConversationId && !conversationId) {
+      router.replace(`/chat/${activeConversationId}`);
     }
+  }, [activeConversationId, conversationId, router]);
+
+  async function handleSend(text?: string) {
+    const content = text ?? input;
+    setInput("");
+    await send(content, selectedDocumentIds);
   }
 
   function toggleDocument(id: string) {
@@ -128,9 +88,9 @@ export function ChatView({
                 {messages.map((message) => (
                   <motion.div
                     key={message.id}
-                    initial="hidden"
-                    animate="show"
-                    variants={messageIn}
+                    initial={{ opacity: 0, y: 10, scale: 0.99 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.32 }}
                   >
                     <MessageBubble
                       message={message}
@@ -155,9 +115,6 @@ export function ChatView({
             onToggleDocument={toggleDocument}
             disabled={isThinking}
           />
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">
-            Try asking something, or type a message containing &ldquo;error&rdquo; or &ldquo;no info&rdquo; to preview those states.
-          </p>
         </div>
       </div>
 

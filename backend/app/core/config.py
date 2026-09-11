@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     mongodb_uri: str = Field(default="", alias="MONGODB_URI")
     mongodb_database: str = Field(default="inqora", alias="MONGODB_DATABASE")
     mongodb_vector_index: str = Field(default="chunks_vector_index", alias="MONGODB_VECTOR_INDEX")
+    # Name of the collection chunks are stored in. Configurable rather than
+    # hardcoded so an existing Atlas Search index on a differently-named
+    # collection can be reused as-is.
+    mongodb_chunks_collection: str = Field(default="chunks", alias="MONGODB_CHUNKS_COLLECTION")
 
     # Auth
     jwt_secret_key: str = Field(default="", alias="JWT_SECRET_KEY")
@@ -30,11 +34,12 @@ class Settings(BaseSettings):
 
     # Gemini
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
-    gemini_model: str = Field(default="gemini-2.0-flash", alias="GEMINI_MODEL")
-    gemini_embedding_model: str = Field(default="text-embedding-004", alias="GEMINI_EMBEDDING_MODEL")
-    # MUST match the real output dimensionality of gemini_embedding_model.
-    # Centralized here rather than guessed inline anywhere in the codebase.
-    gemini_embedding_dimensions: int = Field(default=768, alias="GEMINI_EMBEDDING_DIMENSIONS")
+    gemini_model: str = Field(default="gemini-3.6-flash", alias="GEMINI_MODEL")
+    gemini_embedding_model: str = Field(default="gemini-embedding-001", alias="GEMINI_EMBEDDING_MODEL")
+    # MUST match the real output dimensionality of gemini_embedding_model
+    # AND the numDimensions of the Atlas Vector Search index. Centralized
+    # here rather than guessed inline anywhere in the codebase.
+    gemini_embedding_dimensions: int = Field(default=1536, alias="GEMINI_EMBEDDING_DIMENSIONS")
 
     # Storage
     storage_provider: str = Field(default="local", alias="STORAGE_PROVIDER")

@@ -79,10 +79,10 @@ export function SiteNavbar() {
         <div className="flex items-center gap-1 sm:gap-1.5">
           <ThemeToggle />
           <Button variant="ghost" className="hidden sm:inline-flex" asChild>
-            <Link href="/dashboard">Sign in</Link>
+            <Link href="/login">Sign in</Link>
           </Button>
           <Button className="hidden bg-signal text-signal-foreground hover:bg-signal/90 sm:inline-flex" asChild>
-            <Link href="/dashboard">Get started</Link>
+            <Link href="/register">Get started</Link>
           </Button>
           <Button
             variant="ghost"
@@ -151,12 +151,12 @@ export function SiteNavbar() {
 
             <div className="mt-auto flex flex-col gap-2 pt-6">
               <Button variant="outline" className="w-full" asChild>
-                <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
+                <Link href="/login" onClick={() => setMobileOpen(false)}>
                   Sign in
                 </Link>
               </Button>
               <Button className="w-full bg-signal text-signal-foreground hover:bg-signal/90" asChild>
-                <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
+                <Link href="/register" onClick={() => setMobileOpen(false)}>
                   <LayoutDashboard className="size-4" /> Get started
                 </Link>
               </Button>

@@ -1,22 +1,61 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { FileText, MessageSquarePlus, Plus, ArrowLeft, Calendar, Layers, HardDrive } from "lucide-react";
-import { getDocument } from "@/lib/services/document-service";
+import { useParams, notFound } from "next/navigation";
+import { FileText, MessageSquarePlus, Plus, ArrowLeft, Calendar, Layers, HardDrive, Loader2 } from "lucide-react";
+import { getDocument } from "@/lib/api/documents";
+import { ApiError } from "@/lib/api/client";
+import { useDocumentStatus } from "@/hooks/use-documents";
 import { StatusBadge } from "@/components/documents/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatBytes, formatDate } from "@/lib/format";
 import { FadeIn } from "@/components/visual/fade-in";
+import type { AppDocument } from "@/types";
 
-export default async function DocumentDetailsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const document = await getDocument(id);
-  if (!document) notFound();
+export default function DocumentDetailsPage() {
+  const params = useParams<{ id: string }>();
+  const [document, setDocument] = useState<AppDocument | null>(null);
+  const [notFoundError, setNotFoundError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    getDocument(params.id)
+      .then(setDocument)
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 404) {
+          setNotFoundError(true);
+        }
+      })
+      .finally(() => setIsLoading(false));
+  }, [params.id]);
+
+  const liveStatus = useDocumentStatus(
+    document && (document.status === "queued" || document.status === "processing")
+      ? document.id
+      : null,
+  );
+
+  useEffect(() => {
+    if (!liveStatus || !document) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- merging a status poll result (an external system) into local state
+    setDocument((prev) =>
+      prev ? { ...prev, status: liveStatus.status, pages: liveStatus.pages ?? prev.pages, errorMessage: liveStatus.errorMessage ?? undefined } : prev,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveStatus]);
+
+  if (notFoundError) notFound();
+
+  if (isLoading || !document) {
+    return (
+      <div className="flex h-full items-center justify-center p-8 text-muted-foreground">
+        <Loader2 className="size-5 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4 md:p-8">
@@ -50,17 +89,15 @@ export default async function DocumentDetailsPage({
               <p className="break-words font-serif text-lg font-semibold leading-snug">
                 {document.name}
               </p>
-              <div className="mt-2">
+              <div className="mt-2 flex items-center gap-2">
                 <StatusBadge status={document.status} />
+                {(document.status === "processing" || document.status === "queued") && (
+                  <span className="text-xs text-muted-foreground">
+                    {document.status === "queued" ? "Waiting to process…" : "Indexing document…"}
+                  </span>
+                )}
               </div>
             </div>
-
-            {document.summary && (
-              <>
-                <Separator />
-                <p className="text-sm text-muted-foreground">{document.summary}</p>
-              </>
-            )}
 
             {document.status === "error" && document.errorMessage && (
               <>

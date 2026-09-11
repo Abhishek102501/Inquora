@@ -2,48 +2,79 @@
 
 import { useCallback, useRef, useState, type DragEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { UploadCloud, FileWarning, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { UploadItemRow } from "@/components/upload/upload-item-row";
 import { easePremium } from "@/lib/motion";
+import * as documentsApi from "@/lib/api/documents";
+import { ApiError } from "@/lib/api/client";
 import type { UploadingFile } from "@/types";
 import { cn } from "cn";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
+const POLL_INTERVAL_MS = 2000;
 
 export function UploadManager() {
+  const router = useRouter();
   const [files, setFiles] = useState<UploadingFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const timers = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  // Local upload id -> the underlying File, kept in a ref since it's only
+  // ever read from event handlers (retry), never during render.
+  const filesById = useRef<Map<string, File>>(new Map());
+  // Local upload id -> the real backend document id, once upload succeeds.
+  // This one IS read during render (to link "Start chatting" to the first
+  // ready document), so it must be state, not a ref, to stay reactive.
+  const [documentIdById, setDocumentIdById] = useState<Record<string, string>>({});
+  const pollTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  const runSimulation = useCallback((id: string) => {
-    const interval = setInterval(() => {
-      setFiles((prev) =>
-        prev.map((f) => {
-          if (f.id !== id) return f;
-          if (f.state === "uploading") {
-            const next = f.progress + Math.random() * 22 + 8;
-            if (next >= 100) return { ...f, progress: 100, state: "processing" };
-            return { ...f, progress: Math.round(next) };
-          }
-          if (f.state === "processing") {
-            const next = f.progress + Math.random() * 30 + 15;
-            if (next >= 100) {
-              clearInterval(timers.current.get(id));
-              timers.current.delete(id);
-              return { ...f, progress: 100, state: "success" };
-            }
-            return { ...f, progress: Math.round(next) };
-          }
-          return f;
-        }),
-      );
-    }, 450);
-    timers.current.set(id, interval);
+  function update(id: string, patch: Partial<UploadingFile>) {
+    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  }
+
+  const pollStatus = useCallback((localId: string, documentId: string) => {
+    async function tick() {
+      try {
+        const status = await documentsApi.getDocumentStatus(documentId);
+        if (status.status === "ready") {
+          update(localId, { state: "success", progress: 100 });
+          return;
+        }
+        if (status.status === "error") {
+          update(localId, {
+            state: "error",
+            errorMessage: status.errorMessage ?? "Processing failed.",
+          });
+          return;
+        }
+        pollTimers.current.set(localId, setTimeout(tick, POLL_INTERVAL_MS));
+      } catch {
+        pollTimers.current.set(localId, setTimeout(tick, POLL_INTERVAL_MS));
+      }
+    }
+    tick();
   }, []);
+
+  const startUpload = useCallback(
+    (localId: string, file: File) => {
+      filesById.current.set(localId, file);
+      documentsApi
+        .uploadDocument(file, (percent) => update(localId, { progress: percent }))
+        .then((doc) => {
+          setDocumentIdById((prev) => ({ ...prev, [localId]: doc.id }));
+          update(localId, { state: "processing", progress: 100 });
+          pollStatus(localId, doc.id);
+        })
+        .catch((err) => {
+          const message = err instanceof ApiError ? err.message : "Upload failed.";
+          update(localId, { state: "error", errorMessage: message });
+        });
+    },
+    [pollStatus],
+  );
 
   const addFiles = useCallback(
     (list: FileList | null) => {
@@ -79,12 +110,12 @@ export function UploadManager() {
         }
 
         next.push({ id, name: file.name, sizeBytes: file.size, progress: 0, state: "uploading" });
-        setTimeout(() => runSimulation(id), 50);
+        setTimeout(() => startUpload(id, file), 0);
       }
 
       setFiles((prev) => [...next, ...prev]);
     },
-    [runSimulation],
+    [startUpload],
   );
 
   function handleDrop(e: DragEvent<HTMLDivElement>) {
@@ -94,18 +125,30 @@ export function UploadManager() {
   }
 
   function handleRemove(id: string) {
-    clearInterval(timers.current.get(id));
-    timers.current.delete(id);
+    clearTimeout(pollTimers.current.get(id));
+    pollTimers.current.delete(id);
+    filesById.current.delete(id);
+    setDocumentIdById((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     setFiles((prev) => prev.filter((f) => f.id !== id));
   }
 
   function handleRetry(id: string) {
-    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, state: "uploading", progress: 0, errorMessage: undefined } : f)));
-    runSimulation(id);
+    const file = filesById.current.get(id);
+    if (!file) return;
+    update(id, { state: "uploading", progress: 0, errorMessage: undefined });
+    startUpload(id, file);
   }
 
   const successCount = files.filter((f) => f.state === "success").length;
   const hasActive = files.some((f) => f.state === "uploading" || f.state === "processing");
+  const firstReadySuccess = files.find((f) => f.state === "success");
+  const firstReadyDocumentId = firstReadySuccess
+    ? documentIdById[firstReadySuccess.id]
+    : undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -209,7 +252,14 @@ export function UploadManager() {
           <Button
             size="sm"
             className="bg-signal text-signal-foreground hover:bg-signal/90"
-            onClick={() => toast.success("This is a frontend preview — connect the backend to open a live chat.")}
+            onClick={() => {
+              if (firstReadyDocumentId) {
+                router.push(`/chat?document=${firstReadyDocumentId}`);
+              } else {
+                toast.info("Open Documents to start a conversation.");
+                router.push("/documents");
+              }
+            }}
           >
             Start chatting <ArrowRight className="size-3.5" />
           </Button>

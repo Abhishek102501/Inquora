@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { MessagesSquare, Search, Plus, Trash2, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -24,13 +24,21 @@ import type { AppDocument, Conversation } from "@/types";
 export function ConversationList({
   initialConversations,
   documents,
+  onDeleteConversation,
 }: {
   initialConversations: Conversation[];
   documents: AppDocument[];
+  onDeleteConversation: (id: string) => Promise<void>;
 }) {
   const [conversations, setConversations] = useState(initialConversations);
   const [query, setQuery] = useState("");
   const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing an external prop that arrives after mount, not derivable during render
+    setConversations(initialConversations);
+  }, [initialConversations]);
 
   const docNameById = useMemo(
     () => new Map(documents.map((d) => [d.id, d.name])),
@@ -43,11 +51,19 @@ export function ConversationList({
       c.lastMessage.toLowerCase().includes(query.toLowerCase()),
   );
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return;
-    setConversations((prev) => prev.filter((c) => c.id !== pendingDelete.id));
-    toast.success(`Deleted "${pendingDelete.title}"`);
-    setPendingDelete(null);
+    setIsDeleting(true);
+    try {
+      await onDeleteConversation(pendingDelete.id);
+      setConversations((prev) => prev.filter((c) => c.id !== pendingDelete.id));
+      toast.success(`Deleted "${pendingDelete.title}"`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete this conversation.");
+    } finally {
+      setIsDeleting(false);
+      setPendingDelete(null);
+    }
   }
 
   return (
@@ -136,12 +152,13 @@ export function ConversationList({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={confirmDelete}
+              disabled={isDeleting}
             >
-              Delete
+              {isDeleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -70,7 +70,7 @@ export default function LandingPage() {
                       className="group bg-signal text-signal-foreground shadow-sm hover:bg-signal/90 hover:shadow-md"
                       asChild
                     >
-                      <Link href="/dashboard">
+                      <Link href="/register">
                         Get started{" "}
                         <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                       </Link>
@@ -156,7 +156,7 @@ export default function LandingPage() {
                   className="group bg-signal text-signal-foreground shadow-sm hover:bg-signal/90 hover:shadow-md"
                   asChild
                 >
-                  <Link href="/dashboard">
+                  <Link href="/register">
                     Open workspace{" "}
                     <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </Link>

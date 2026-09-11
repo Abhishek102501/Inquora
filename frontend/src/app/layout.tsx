@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { MotionRoot } from "@/components/layout/motion-root";
+import { AuthProvider } from "@/lib/auth/auth-context";
 
 const sans = Inter({
   variable: "--font-sans",
@@ -39,8 +40,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <MotionRoot>
             <TooltipProvider delayDuration={200}>
-              {children}
-              <Toaster position="bottom-right" />
+              <AuthProvider>
+                {children}
+                <Toaster position="bottom-right" />
+              </AuthProvider>
             </TooltipProvider>
           </MotionRoot>
         </ThemeProvider>

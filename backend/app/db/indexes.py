@@ -23,13 +23,16 @@ logger = get_logger(__name__)
 
 
 def create_standard_indexes(db: Database) -> None:
+    settings = get_settings()
+    chunks = db[settings.mongodb_chunks_collection]
+
     db.users.create_index("email", unique=True, name="uniq_email")
 
     db.documents.create_index([("userId", 1), ("createdAt", -1)], name="user_created")
     db.documents.create_index([("userId", 1), ("status", 1)], name="user_status")
 
-    db.chunks.create_index("documentId", name="by_document")
-    db.chunks.create_index("userId", name="by_user")
+    chunks.create_index("documentId", name="by_document")
+    chunks.create_index("userId", name="by_user")
 
     db.conversations.create_index([("userId", 1), ("updatedAt", -1)], name="user_updated")
 
@@ -39,41 +42,38 @@ def create_standard_indexes(db: Database) -> None:
 
 
 def ensure_vector_search_index(db: Database) -> None:
-    """Best-effort creation of the Atlas Vector Search index.
+    """Read-only verification of the Atlas Vector Search index.
 
-    Silently no-ops (with a log line) if the driver/server doesn't support
-    programmatic search index management (e.g. local MongoDB, older Atlas
-    driver support, or insufficient privileges) — this must never prevent
-    the application from starting.
+    This function deliberately NEVER creates, modifies, or deletes a search
+    index — it only checks that the configured index exists and logs its
+    status. Provisioning a Vector Search index is a one-time, usually
+    manual step (Atlas UI/CLI) documented in backend/README.md; automating
+    it here would risk clobbering an intentionally hand-tuned index (e.g.
+    a different vector path, dimensions, or added filter fields).
     """
     settings = get_settings()
-    definition = {
-        "name": settings.mongodb_vector_index,
-        "type": "vectorSearch",
-        "definition": {
-            "fields": [
-                {
-                    "type": "vector",
-                    "path": "embedding",
-                    "numDimensions": settings.gemini_embedding_dimensions,
-                    "similarity": "cosine",
-                },
-                {"type": "filter", "path": "userId"},
-                {"type": "filter", "path": "documentId"},
-            ]
-        },
-    }
+    collection = db[settings.mongodb_chunks_collection]
     try:
-        existing = {idx["name"] for idx in db.chunks.list_search_indexes()}
-        if settings.mongodb_vector_index in existing:
-            logger.info("Vector search index '%s' already exists.", settings.mongodb_vector_index)
+        indexes = {idx["name"]: idx for idx in collection.list_search_indexes()}
+        match = indexes.get(settings.mongodb_vector_index)
+        if match is None:
+            logger.warning(
+                "Vector search index '%s' was not found on collection '%s'. "
+                "Create it manually — see backend/README.md.",
+                settings.mongodb_vector_index,
+                settings.mongodb_chunks_collection,
+            )
             return
-        db.chunks.create_search_index(definition)
-        logger.info("Created vector search index '%s'.", settings.mongodb_vector_index)
+        logger.info(
+            "Vector search index '%s' found on collection '%s', status=%s.",
+            settings.mongodb_vector_index,
+            settings.mongodb_chunks_collection,
+            match.get("status"),
+        )
     except OperationFailure as exc:
         logger.warning(
-            "Could not verify/create the Atlas Vector Search index automatically (%s). "
-            "Create it manually — see backend/README.md.",
+            "Could not verify the Atlas Vector Search index (%s). "
+            "This is expected on non-Atlas MongoDB deployments.",
             exc,
         )
     except Exception as exc:  # noqa: BLE001

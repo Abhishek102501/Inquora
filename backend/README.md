@@ -92,11 +92,12 @@ All variables live in `backend/.env` (never committed — see `.gitignore`). See
 |---|---|
 | `MONGODB_URI` | Atlas connection string. |
 | `MONGODB_DATABASE` | Database name (e.g. `inqora`). |
-| `MONGODB_VECTOR_INDEX` | Name of the Atlas Search vector index on `chunks` (section 6). |
+| `MONGODB_CHUNKS_COLLECTION` | Collection chunks are stored in (default `chunks`). |
+| `MONGODB_VECTOR_INDEX` | Name of the Atlas Search vector index on that collection (section 6). |
 | `JWT_SECRET_KEY` | Random secret for signing access tokens. Generate with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. |
 | `GEMINI_API_KEY` | Your Gemini API key. |
-| `GEMINI_MODEL` | Chat/generation model, e.g. `gemini-2.0-flash`. |
-| `GEMINI_EMBEDDING_MODEL` | Embedding model, e.g. `text-embedding-004`. |
+| `GEMINI_MODEL` | Chat/generation model. Availability varies by key/account — verify against `GET /v1beta/models?key=...` rather than assuming a name works. |
+| `GEMINI_EMBEDDING_MODEL` | Embedding model, e.g. `gemini-embedding-001` (supports configurable output size). |
 | `GEMINI_EMBEDDING_DIMENSIONS` | **Must match** the real output size of the embedding model above (see warning below). |
 | `CORS_ORIGINS` | Comma-separated allowed origins, e.g. `http://localhost:3000`. |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | Chunking tuning, in characters. |
@@ -106,30 +107,41 @@ All variables live in `backend/.env` (never committed — see `.gitignore`). See
 > **⚠️ Embedding dimensions are not guessed.** `GEMINI_EMBEDDING_DIMENSIONS` is read from
 > configuration everywhere (the embedding provider, and the Atlas Vector Search index
 > definition below) instead of being hardcoded. If you change `GEMINI_EMBEDDING_MODEL`, check
-> that model's actual output dimensionality in Google's documentation and update
-> `GEMINI_EMBEDDING_DIMENSIONS` to match — then **recreate** the Atlas Vector Search index,
-> since an existing index's `numDimensions` cannot be changed in place. The shipped default
-> (`text-embedding-004`, 768 dimensions) is a stable, documented pairing.
+> that model's actual output dimensionality (call the API and inspect a real response — don't
+> assume from docs, which can be stale) and update `GEMINI_EMBEDDING_DIMENSIONS` to match —
+> then **recreate** the Atlas Vector Search index, since an existing index's `numDimensions`
+> cannot be changed in place. The shipped default pairs `gemini-embedding-001` with
+> `outputDimensionality: 1536`, verified working against a live Atlas M0 cluster.
 
 ## 5. MongoDB Atlas setup
 
-1. Create a free or paid Atlas cluster (Vector Search requires an M10+ dedicated cluster, or a
-   Serverless/Flex instance with Search enabled — the free M0 shared tier does **not** support
-   Atlas Search).
-2. Create a database user and allow-list your IP (or `0.0.0.0/0` for local development only).
-3. Copy the connection string into `MONGODB_URI`.
-4. Collections (`users`, `documents`, `chunks`, `conversations`, `messages`) and their standard
-   indexes are created automatically at application startup — see `app/db/indexes.py`. Nothing
-   manual is required for those.
+1. Create a free or paid Atlas cluster. Vector Search has historically required an M10+
+   dedicated cluster or a Search-enabled Serverless/Flex tier — but Atlas's tier support
+   changes over time and region, so verify directly in your project rather than assuming; this
+   project has been run successfully against a free M0 tier with Vector Search enabled.
+2. Create a database user and allow-list your IP under **Network Access** (or `0.0.0.0/0` for
+   local development only — never in production). Atlas rejects connections from non-allow-listed
+   IPs at the TLS layer with a generic handshake error, which can look like a credentials problem
+   — check Network Access first if you see `SSL: TLSV1_ALERT_INTERNAL_ERROR`.
+3. Database users authenticate against the `admin` database regardless of which database they
+   have data access to. Include `authSource=admin` explicitly in `MONGODB_URI`, or authentication
+   will fail with a generic `bad auth` error even with correct credentials.
+4. Copy the connection string into `MONGODB_URI`.
+5. Collections (`users`, `documents`, `chunks`/your configured chunks collection, `conversations`,
+   `messages`) and their standard indexes are created automatically at application startup — see
+   `app/db/indexes.py`. Nothing manual is required for those. The Vector Search index (section 6)
+   is the one thing you provision yourself.
 
 ## 6. Vector Search index setup
 
 The Atlas **Search** index (a different kind of object from a regular MongoDB index) on
-`chunks.embedding` is what powers real vector retrieval. The app attempts to create it
-automatically at startup via the driver (`app/db/indexes.py::ensure_vector_search_index`), but
-this requires Atlas + sufficient privileges and is best-effort — if it doesn't apply
-automatically, create it once via the Atlas UI (Atlas → your cluster → **Search** → **Create
-Search Index** → **Vector Search** → JSON editor) using this exact definition:
+`<chunks collection>.embedding` is what powers real vector retrieval. This app **never**
+creates, modifies, or deletes a search index programmatically — `app/db/indexes.py::
+ensure_vector_search_index` only checks at startup that the configured index exists and logs
+its status. Provisioning is a one-time, deliberate step you do via the Atlas UI/CLI.
+
+Minimal definition (Atlas → your cluster → **Search** → **Create Search Index** → **Vector
+Search** → JSON editor):
 
 ```json
 {
@@ -140,21 +152,26 @@ Search Index** → **Vector Search** → JSON editor) using this exact definitio
       {
         "type": "vector",
         "path": "embedding",
-        "numDimensions": 768,
+        "numDimensions": 1536,
         "similarity": "cosine"
-      },
-      { "type": "filter", "path": "userId" },
-      { "type": "filter", "path": "documentId" }
+      }
     ]
   }
 }
 ```
 
-- `numDimensions` **must** equal `GEMINI_EMBEDDING_DIMENSIONS`.
-- `index name` must equal `MONGODB_VECTOR_INDEX`.
-- The `filter` fields on `userId` and `documentId` are what let `$vectorSearch` restrict results
-  to the authenticated user (and optionally to specific documents) *inside* the vector search
-  itself — see `app/db/repositories/chunks.py::vector_search`.
+- `numDimensions` **must** equal `GEMINI_EMBEDDING_DIMENSIONS`, and the collection/index names
+  must equal `MONGODB_CHUNKS_COLLECTION` / `MONGODB_VECTOR_INDEX`.
+- **Optional but recommended**: add `{ "type": "filter", "path": "userId" }` and
+  `{ "type": "filter", "path": "documentId" }` so `$vectorSearch` can restrict results to the
+  authenticated user *inside* the vector search itself (best recall and performance). If your
+  index does **not** declare those filter fields (as is the case if you provisioned it with only
+  the `vector` field above), `ChunksRepository.vector_search` still enforces per-user isolation
+  correctly — it applies `userId`/`documentId` as a `$match` stage immediately after
+  `$vectorSearch`, over-fetching candidates (`numCandidates`/internal limit inflated well beyond
+  `top_k`) so a user's own results aren't crowded out by other users' data before that filter
+  runs. Either index shape is supported; declaring the filter fields is simply more efficient at
+  large scale.
 
 ## 7. Gemini API configuration
 

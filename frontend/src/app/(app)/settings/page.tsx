@@ -20,10 +20,12 @@ import {
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Progress } from "@/components/ui/progress";
 import { StaggerGroup, StaggerItem } from "@/components/visual/fade-in";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export default function SettingsPage() {
-  const [name, setName] = useState("Abhishek");
-  const [email, setEmail] = useState("abhishek.dev1001@gmail.com");
+  const { user } = useAuth();
+  const [name, setName] = useState(user?.name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
   const [answerLength, setAnswerLength] = useState("balanced");
   const [citations, setCitations] = useState(true);
   const [autoTitle, setAutoTitle] = useState(true);
@@ -44,7 +46,12 @@ export default function SettingsPage() {
           <div className="flex items-center gap-4">
             <Avatar className="size-14">
               <AvatarFallback className="bg-signal/15 text-base font-medium text-signal">
-                AS
+                {(user?.name ?? "")
+                  .split(" ")
+                  .map((part) => part[0])
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <Button variant="outline" size="sm" onClick={() => toast.info("Avatar upload isn't wired up in this preview.")}>

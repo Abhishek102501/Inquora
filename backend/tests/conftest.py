@@ -1,11 +1,17 @@
 import os
 
-# Set required config BEFORE any app import so tests never depend on a real
-# .env file or real credentials.
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-not-for-production")
-os.environ.setdefault("GEMINI_API_KEY", "")
-os.environ.setdefault("CORS_ORIGINS", "http://localhost:3000")
-os.environ.setdefault("MONGODB_URI", "")
+# Force deterministic config BEFORE any app import so tests are fully
+# isolated from a real backend/.env file — pydantic-settings would
+# otherwise happily load real values (e.g. a real MONGODB_CHUNKS_COLLECTION
+# or GEMINI_API_KEY) for any field not set here, which would make test
+# behavior depend on whoever's local .env happens to contain. These are
+# plain assignments (not setdefault) so they always win over .env.
+os.environ["JWT_SECRET_KEY"] = "test-secret-key-not-for-production"
+os.environ["GEMINI_API_KEY"] = ""
+os.environ["CORS_ORIGINS"] = "http://localhost:3000"
+os.environ["MONGODB_URI"] = ""
+os.environ["MONGODB_CHUNKS_COLLECTION"] = "chunks"
+os.environ["MONGODB_VECTOR_INDEX"] = "chunks_vector_index"
 
 import mongomock
 import pytest

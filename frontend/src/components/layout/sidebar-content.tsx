@@ -18,8 +18,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { navItems } from "@/components/layout/nav-items";
-import { mockConversations } from "@/data/mock-conversations";
-import { mockDocuments } from "@/data/mock-documents";
+import { useConversations } from "@/hooks/use-conversations";
+import { useDocuments } from "@/hooks/use-documents";
+import { useAuth } from "@/lib/auth/auth-context";
 import { easePremium } from "@/lib/motion";
 
 interface SidebarContentProps {
@@ -32,8 +33,25 @@ export function SidebarContent({ collapsed, onToggleCollapse, onNavigate }: Side
   const pathname = usePathname();
   const router = useRouter();
   const scope = useId();
-  const recentConversations = mockConversations.slice(0, 3);
-  const shortcutDocuments = mockDocuments.filter((d) => d.status === "ready").slice(0, 3);
+  const { user, logout } = useAuth();
+  const { conversations } = useConversations();
+  const { documents } = useDocuments();
+  const recentConversations = conversations.slice(0, 3);
+  const shortcutDocuments = documents.filter((d) => d.status === "ready").slice(0, 3);
+  const initials = user
+    ? user.name
+        .split(" ")
+        .map((part) => part[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "";
+
+  function handleLogout() {
+    logout();
+    onNavigate?.();
+    router.push("/login");
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -168,16 +186,16 @@ export function SidebarContent({ collapsed, onToggleCollapse, onNavigate }: Side
             >
               <Avatar className="size-7 ring-1 ring-signal/20">
                 <AvatarFallback className="bg-signal/15 text-[11px] font-medium text-signal">
-                  AS
+                  {initials}
                 </AvatarFallback>
               </Avatar>
               {!collapsed && (
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-medium text-sidebar-foreground">
-                    Abhishek
+                    {user?.name}
                   </p>
                   <p className="truncate text-[11px] text-sidebar-foreground/50">
-                    abhishek.dev1001@gmail.com
+                    {user?.email}
                   </p>
                 </div>
               )}
@@ -190,7 +208,7 @@ export function SidebarContent({ collapsed, onToggleCollapse, onNavigate }: Side
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">
+            <DropdownMenuItem variant="destructive" onClick={handleLogout}>
               <LogOut className="mr-2 size-4" /> Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

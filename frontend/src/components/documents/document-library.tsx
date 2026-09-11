@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, Upload, LayoutGrid, List as ListIcon, FileStack, Star } from "lucide-react";
 import { toast } from "sonner";
@@ -26,6 +26,7 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { DocumentCard } from "@/components/documents/document-card";
 import { StaggerGroup, StaggerItem } from "@/components/visual/fade-in";
+import { toggleFavoriteId } from "@/lib/favorites";
 import type { AppDocument, DocumentStatus } from "@/types";
 import { cn } from "cn";
 
@@ -35,10 +36,14 @@ export function DocumentLibrary({
   initialDocuments,
   initialQuery,
   mode = "library",
+  onDeleteDocument,
 }: {
   initialDocuments: AppDocument[];
   initialQuery?: string;
   mode?: "library" | "favorites";
+  /** Real backend delete for "library" mode. Omitted in "favorites" mode,
+   * where removal is a frontend-only unpin, not a real delete. */
+  onDeleteDocument?: (id: string) => Promise<void>;
 }) {
   const [documents, setDocuments] = useState(initialDocuments);
   const [query, setQuery] = useState(initialQuery ?? "");
@@ -46,6 +51,14 @@ export function DocumentLibrary({
   const [sort, setSort] = useState<SortKey>("newest");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [pendingDelete, setPendingDelete] = useState<AppDocument | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    // Mirrors the parent's async-fetched list into local state so this
+    // component can still filter/sort/optimistically-delete locally.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing an external prop that arrives after mount, not derivable during render
+    setDocuments(initialDocuments);
+  }, [initialDocuments]);
 
   const filtered = useMemo(() => {
     let list = documents.filter((d) => d.name.toLowerCase().includes(query.toLowerCase()));
@@ -66,20 +79,35 @@ export function DocumentLibrary({
   }, [documents, query, status, sort]);
 
   function toggleFavorite(doc: AppDocument) {
+    toggleFavoriteId(doc.id);
     setDocuments((docs) =>
       docs.map((d) => (d.id === doc.id ? { ...d, favorite: !d.favorite } : d)),
     );
     toast.success(doc.favorite ? `Removed "${doc.name}" from favorites` : `Added "${doc.name}" to favorites`);
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return;
-    setDocuments((docs) => docs.filter((d) => d.id !== pendingDelete.id));
-    toast.success(
-      mode === "favorites"
-        ? `Removed "${pendingDelete.name}" from favorites`
-        : `Deleted "${pendingDelete.name}"`,
-    );
+    const target = pendingDelete;
+
+    if (mode === "library" && onDeleteDocument) {
+      setIsDeleting(true);
+      try {
+        await onDeleteDocument(target.id);
+        setDocuments((docs) => docs.filter((d) => d.id !== target.id));
+        toast.success(`Deleted "${target.name}"`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Could not delete this document.");
+      } finally {
+        setIsDeleting(false);
+        setPendingDelete(null);
+      }
+      return;
+    }
+
+    toggleFavoriteId(target.id);
+    setDocuments((docs) => docs.filter((d) => d.id !== target.id));
+    toast.success(`Removed "${target.name}" from favorites`);
     setPendingDelete(null);
   }
 
@@ -225,12 +253,13 @@ export function DocumentLibrary({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className={mode === "favorites" ? "" : "bg-destructive text-white hover:bg-destructive/90"}
               onClick={confirmDelete}
+              disabled={isDeleting}
             >
-              {mode === "favorites" ? "Remove" : "Delete"}
+              {isDeleting ? "Deleting…" : mode === "favorites" ? "Remove" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

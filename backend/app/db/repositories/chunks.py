@@ -2,10 +2,17 @@
 
 `vector_search` issues a real `$vectorSearch` aggregation stage against the
 Atlas Search index configured via `MONGODB_VECTOR_INDEX` — this is genuine
-Atlas Vector Search, not a Python-side cosine-similarity simulation. A
-`filter` is always applied on `userId` (and optionally `documentId`) so a
-user can never retrieve another user's chunks, and a document-scoped chat
-can never leak chunks from a document outside the conversation's scope.
+Atlas Vector Search, not a Python-side cosine-similarity simulation.
+
+User/document scoping is applied as a `$match` stage AFTER `$vectorSearch`
+rather than as a `$vectorSearch` `filter`, because Atlas only allows
+filtering on paths that are explicitly declared as `filter`-type fields in
+the search index definition. If your index does declare `userId`/
+`documentId` as filter fields, add them to the `$vectorSearch.filter`
+clause instead for better recall — see backend/README.md. Since filtering
+happens after the vector search, `numCandidates`/the internal fetch limit
+are inflated well beyond `top_k` so a user's own results aren't crowded
+out by other users' data before the post-filter runs.
 """
 
 from typing import Any
@@ -21,10 +28,17 @@ from app.models.chunk import Chunk, ChunkMetadata
 
 logger = get_logger(__name__)
 
+# How many raw vector-search hits to pull before post-filtering by
+# user/document. Must comfortably exceed top_k since most hits may belong
+# to other users and get discarded by the $match stage below.
+_CANDIDATE_MULTIPLIER = 20
+_MIN_CANDIDATES = 150
+
 
 class ChunksRepository:
     def __init__(self, db: Database):
-        self._collection = db.chunks
+        settings = get_settings()
+        self._collection = db[settings.mongodb_chunks_collection]
 
     def insert_many(self, chunks: list[dict[str, Any]]) -> list[str]:
         if not chunks:
@@ -47,10 +61,11 @@ class ChunksRepository:
         """Runs Atlas Vector Search and returns raw result dicts with a
         `score` (cosine similarity) alongside the chunk fields."""
         settings = get_settings()
+        fetch_limit = max(top_k * _CANDIDATE_MULTIPLIER, _MIN_CANDIDATES)
 
-        vector_filter: dict[str, Any] = {"userId": {"$eq": user_id}}
+        match_stage: dict[str, Any] = {"userId": user_id}
         if document_ids:
-            vector_filter["documentId"] = {"$in": document_ids}
+            match_stage["documentId"] = {"$in": document_ids}
 
         pipeline = [
             {
@@ -58,9 +73,8 @@ class ChunksRepository:
                     "index": settings.mongodb_vector_index,
                     "path": "embedding",
                     "queryVector": query_embedding,
-                    "numCandidates": max(top_k * 10, 100),
-                    "limit": top_k,
-                    "filter": vector_filter,
+                    "numCandidates": fetch_limit * 2,
+                    "limit": fetch_limit,
                 }
             },
             {
@@ -74,6 +88,8 @@ class ChunksRepository:
                     "score": {"$meta": "vectorSearchScore"},
                 }
             },
+            {"$match": match_stage},
+            {"$limit": top_k},
         ]
         try:
             return list(self._collection.aggregate(pipeline))
