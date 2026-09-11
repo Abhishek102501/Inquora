@@ -1,41 +1,59 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# This repository contains two independent projects:
+#   frontend/  — Next.js
+#   backend/   — FastAPI
+# Patterns below apply repo-wide (no leading slash matches at any depth),
+# so they cover both projects without needing per-project duplication.
+# Each project also keeps its own .gitignore for anything project-specific.
 
-# dependencies
-/node_modules
-/.pnp
+# ---- Node / Next.js ----
+node_modules/
+.next/
+out/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-
-# testing
 /coverage
+*.tsbuildinfo
+next-env.d.ts
+.vercel
 
-# next.js
-/.next/
-/out/
+# ---- Python / FastAPI ----
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
-# production
-/build
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
 
-# misc
+# ---- User-uploaded content — never commit real documents ----
+backend/uploads/
+*.pdf
+
+# ---- Build output ----
+dist/
+build/
+
+# ---- OS / editor ----
 .DS_Store
+Thumbs.db
 *.pem
+.vscode/
+.idea/
 
-# debug
+# ---- Logs ----
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
