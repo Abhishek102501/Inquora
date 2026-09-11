@@ -1,0 +1,19 @@
+[project]
+name = "inqora-backend"
+version = "0.1.0"
+description = "INQORA — AI document intelligence backend (FastAPI + MongoDB Atlas Vector Search + Gemini RAG)"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+exclude = ["uploads", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
